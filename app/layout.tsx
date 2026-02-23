@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Syne, Instrument_Sans, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
+import { Providers } from "./providers";
 
 const syne = Syne({
   variable: "--font-display",
@@ -21,8 +22,12 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "NexOps — Operations Command Center",
-  description: "Zero-latency operations command center.",
+  title: {
+    default:  "NexOps — Operations Command Center",
+    template: "%s | NexOps",
+  },
+  description: "Zero-latency operations command center for logistics and field operations teams.",
+  robots: { index: false, follow: false },
 };
 
 export default function RootLayout({
@@ -35,7 +40,9 @@ export default function RootLayout({
       <body
         className={`${syne.variable} ${instrumentSans.variable} ${jetbrainsMono.variable} antialiased`}
       >
-        {children}
+        <Providers>
+          {children}
+        </Providers>
       </body>
     </html>
   );
