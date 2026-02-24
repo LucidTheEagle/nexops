@@ -187,6 +187,16 @@ export interface SyncState {
   pending_ops: number;
 }
 
+// ── User Session ──────────────────────────────────────────────────────────────
+
+export interface UserSession {
+  id:            string;
+  user_id:       string;
+  role_override: UserRole | null;
+  created_at:    string;
+  updated_at:    string;
+}
+
 // ── Drill-Down Drawer ─────────────────────────────────────────────────────────
 
 export interface DrillDownData {
