@@ -1,225 +1,108 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// NexOps — CP-02.5 Pipeline Test Harness
-// Proves: Zustand → Optimistic UI → Supabase write → Realtime confirmation
-// This page is replaced at CP-03 with the real Action Queue.
+// NexOps — Command Center Home
+// CP-03: Action Queue live. Pipeline test harness retired.
 // ─────────────────────────────────────────────────────────────────────────────
 
 "use client";
 
-import { useEffect, useRef } from "react";
-import { useInsertAnomaly, useAnomalies } from "@/lib/hooks/useAnomalies";
-import { useSyncStore } from "@/lib/stores/sync.store";
+import { ActionQueue } from "@/components/action-queue/ActionQueue";
+import { SyncDot }     from "@/components/ui/SyncDot";
 import { useAppStore } from "@/lib/stores/app.store";
-import { supabase } from "@/lib/supabase/browser";
-import { getSyncStatusConfig } from "@/lib/utils";
-import type { Anomaly } from "@/types";
+import { getRoleConfig } from "@/lib/config/roles";
+import { isModuleVisible } from "@/lib/config/roles";
 
-const TEST_ROLE = "warehouse_manager" as const;
-
-export default function PipelineTest() {
-  const activeRole          = useAppStore((s) => s.activeRole);
-  const syncStatus          = useSyncStore((s) => s.status);
-  const setSyncStatus       = useSyncStore((s) => s.setSyncStatus);
-  const incrementPending    = useSyncStore((s) => s.incrementPending);
-  const confirmSync         = useSyncStore((s) => s.confirmSync);
-
-  const { data: anomalies, isLoading } = useAnomalies(TEST_ROLE);
-  const insertAnomaly                  = useInsertAnomaly(TEST_ROLE);
-
-  const syncConfig   = getSyncStatusConfig(syncStatus);
-  const realtimeRef  = useRef(false);
-
-  // ── Step 4: Supabase Realtime subscription ──────────────────────────────
-  useEffect(() => {
-    if (realtimeRef.current) return;
-    realtimeRef.current = true;
-
-    setSyncStatus("syncing");
-
-    const channel = supabase
-      .channel("anomalies-pipeline-test")
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "anomalies" },
-        (payload) => {
-          console.log("[CP-02.5] Step 4 — Realtime confirmed:", payload.new);
-          confirmSync(new Date().toISOString());
-        }
-      )
-      .subscribe((status) => {
-        console.log("[CP-02.5] Realtime channel status:", status);
-        if (status === "SUBSCRIBED") setSyncStatus("live");
-        if (status === "CLOSED")     setSyncStatus("offline");
-        if (status === "CHANNEL_ERROR") setSyncStatus("reconnecting");
-      });
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [setSyncStatus, confirmSync]);
-
-  // ── Pipeline Test Trigger ───────────────────────────────────────────────
-  function runPipelineTest() {
-    console.log("[CP-02.5] Step 1 — Zustand mutation fired");
-    incrementPending();
-
-    const start = performance.now();
-    console.log(`[CP-02.5] Step 1 — Zustand mutation fired`);
-    incrementPending();
-    
-    insertAnomaly.mutate(
-      {
-        type:               "SHIPMENT_DELAYED",
-        severity:           "CRITICAL",
-        entity_type:        "shipment",
-        entity_id:          "00000000-0000-0000-0000-000000000001",
-        entity_label:       "Shipment #TEST — Rotterdam to Dubai",
-        time_delta_minutes: 134,
-        trigger_source:     "MANUAL",
-      },
-      {
-        onSuccess: () => {
-          const elapsed = performance.now() - start;
-          console.log(`[CP-02.5] Step 2 — Optimistic UI update: ${elapsed.toFixed(2)}ms`);
-          console.log("[CP-02.5] Step 3 — Supabase write confirmed");
-        },
-        onError: (err) => {
-          console.error("[CP-02.5] Pipeline error:", err);
-        },
-      }
-    );
-  }
+export default function Home() {
+  const activeRole  = useAppStore((s) => s.activeRole);
+  const roleConfig  = getRoleConfig(activeRole);
 
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center gap-8 p-8">
-
-      {/* Header */}
-      <div style={{ textAlign: "center" }}>
-        <h1 style={{
-          fontFamily:    "var(--font-display)",
-          fontSize:      "48px",
-          fontWeight:    800,
-          color:         "var(--color-violet)",
-          letterSpacing: "-0.03em",
-        }}>
-          NexOps
-        </h1>
-        <p style={{
-          fontFamily:    "var(--font-mono)",
-          fontSize:      "12px",
-          color:         "var(--color-text-muted)",
-          marginTop:     "8px",
-          letterSpacing: "0.1em",
-          textTransform: "uppercase",
-        }}>
-          CP-02.5 — Pipeline Test
-        </p>
-      </div>
-
-      {/* Sync Status Dot */}
-      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-        <div style={{
-          width:        "10px",
-          height:       "10px",
-          borderRadius: "50%",
-          background:   syncConfig.color,
-        }} />
-        <span style={{
-          fontFamily: "var(--font-mono)",
-          fontSize:   "12px",
-          color:      syncConfig.color,
-        }}>
-          {syncConfig.label}
-        </span>
-      </div>
-
-      {/* Pipeline Test Button */}
-      <button
-        onClick={runPipelineTest}
-        disabled={insertAnomaly.isPending}
+    <div
+      style={{
+        minHeight:  "100vh",
+        background: "var(--color-surface)",
+      }}
+    >
+      {/* Top Bar */}
+      <header
         style={{
-          background:   "var(--color-violet)",
-          color:        "var(--color-text-primary)",
-          border:       "none",
-          borderRadius: "8px",
-          padding:      "12px 24px",
-          fontFamily:   "var(--font-mono)",
-          fontSize:     "13px",
-          cursor:       insertAnomaly.isPending ? "not-allowed" : "pointer",
-          opacity:      insertAnomaly.isPending ? 0.6 : 1,
+          display:         "flex",
+          alignItems:      "center",
+          justifyContent:  "space-between",
+          padding:         "16px 24px",
+          borderBottom:    "1px solid var(--color-border)",
+          background:      "var(--color-raised)",
+          position:        "sticky",
+          top:             0,
+          zIndex:          50,
         }}
       >
-        {insertAnomaly.isPending ? "Writing..." : "Run Pipeline Test"}
-      </button>
+        {/* Logo */}
+        <span
+          style={{
+            fontFamily:    "var(--font-display)",
+            fontSize:      "20px",
+            fontWeight:    800,
+            color:         "var(--color-violet)",
+            letterSpacing: "-0.03em",
+          }}
+        >
+          NexOps
+        </span>
 
-      {/* Live Anomaly Feed */}
-      <div style={{ width: "100%", maxWidth: "600px" }}>
-        <p style={{
-          fontFamily: "var(--font-mono)",
-          fontSize:   "11px",
-          color:      "var(--color-text-muted)",
-          marginBottom: "12px",
-          textTransform: "uppercase",
-          letterSpacing: "0.1em",
-        }}>
-          Live Anomaly Feed — Role: {activeRole}
-        </p>
-
-        {isLoading && (
-          <p style={{ fontFamily: "var(--font-mono)", fontSize: "12px", color: "var(--color-text-muted)" }}>
-            Loading...
-          </p>
-        )}
-
-        {anomalies?.map((anomaly: Anomaly) => (
-          <div
-            key={anomaly.id}
+        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+          {/* Role label */}
+          <span
             style={{
-              background:   "var(--color-raised)",
-              border:       "1px solid var(--color-border)",
-              borderRadius: "8px",
-              padding:      "12px 16px",
-              marginBottom: "8px",
-              display:      "flex",
-              gap:          "12px",
-              alignItems:   "center",
+              fontFamily:    "var(--font-mono)",
+              fontSize:      "10px",
+              color:         "var(--color-text-muted)",
+              textTransform: "uppercase",
+              letterSpacing: "0.08em",
             }}
           >
-            <span style={{
-              fontFamily:  "var(--font-mono)",
-              fontSize:    "10px",
-              color:       anomaly.severity === "CRITICAL" ? "#F43F5E"
-                         : anomaly.severity === "WARNING"  ? "#F59E0B"
-                         : "#6366F1",
-              fontWeight:  700,
-              minWidth:    "70px",
-            }}>
-              {anomaly.severity}
-            </span>
-            <span style={{
-              fontFamily: "var(--font-sans)",
-              fontSize:   "13px",
-              color:      "var(--color-text-primary)",
-              flex:       1,
-            }}>
-              {anomaly.entity_label}
-            </span>
-            <span style={{
+            {roleConfig.label}
+          </span>
+
+          {/* Sync dot — warehouse manager only */}
+          {isModuleVisible(activeRole, "sync_status") && <SyncDot />}
+        </div>
+      </header>
+
+      {/* Main */}
+      <main style={{ maxWidth: "720px", margin: "0 auto", padding: "32px 24px" }}>
+
+        {/* Action Queue header */}
+        <div style={{ marginBottom: "20px" }}>
+          <h1
+            style={{
+              fontFamily:    "var(--font-display)",
+              fontSize:      "22px",
+              fontWeight:    700,
+              color:         "var(--color-text-primary)",
+              letterSpacing: "-0.02em",
+              margin:        0,
+            }}
+          >
+            Action Queue
+          </h1>
+          <p
+            style={{
               fontFamily: "var(--font-mono)",
               fontSize:   "11px",
               color:      "var(--color-text-muted)",
-            }}>
-              {anomaly.anomaly_status}
-            </span>
-          </div>
-        ))}
-
-        {anomalies?.length === 0 && !isLoading && (
-          <p style={{ fontFamily: "var(--font-mono)", fontSize: "12px", color: "var(--color-text-muted)" }}>
-            No anomalies. Hit the button above to run the pipeline test.
+              marginTop:  "4px",
+              textTransform: "uppercase",
+              letterSpacing: "0.08em",
+            }}
+          >
+            Priority Inbox — {roleConfig.anomalySeverityFilter.join(" · ")}
           </p>
-        )}
-      </div>
-    </main>
+        </div>
+
+        {/* Action Queue feed */}
+        {isModuleVisible(activeRole, "action_queue") && <ActionQueue />}
+
+      </main>
+    </div>
   );
 }
