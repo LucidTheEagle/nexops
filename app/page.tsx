@@ -9,6 +9,7 @@ import { useState }        from "react";
 import { ActionQueue }     from "@/components/action-queue/ActionQueue";
 import { SyncDot }         from "@/components/ui/SyncDot";
 import { AuditLedger }     from "@/components/audit/AuditLedger";
+import { DrillDownDrawer } from "@/components/drill-down/DrillDownDrawer";
 import { CommandPalette }  from "@/components/ui/CommandPalette";
 import { RoleToggle }      from "@/components/ui/RoleToggle";
 import { useAppStore }     from "@/lib/stores/app.store";
@@ -250,7 +251,7 @@ export default function Home() {
           </aside>
         )}
       </div>
-
+      <DrillDownDrawer />
       <CommandPalette />
     </div>
   );
