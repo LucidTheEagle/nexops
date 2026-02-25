@@ -6,19 +6,21 @@
 
 "use client";
 
-import { useEffect } from "react";
-import { useAnomalies } from "@/lib/hooks/useAnomalies";
-import { useAppStore }  from "@/lib/stores/app.store";
-import { useSyncStore } from "@/lib/stores/sync.store";
-import { supabase }     from "@/lib/supabase/browser";
-import { AnomalyCard }  from "./AnomalyCard";
-import type { Anomaly } from "@/types";
+import { useEffect }      from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useAnomalies, anomalyKeys } from "@/lib/hooks/useAnomalies";
+import { useAppStore }    from "@/lib/stores/app.store";
+import { useSyncStore }   from "@/lib/stores/sync.store";
+import { supabase }       from "@/lib/supabase/browser";
+import { AnomalyCard }    from "./AnomalyCard";
+import type { Anomaly }   from "@/types";
 
 export function ActionQueue() {
-  const activeRole       = useAppStore((s) => s.activeRole);
-  const openDrawer       = useAppStore((s) => s.openDrawer);
-  const setSyncStatus    = useSyncStore((s) => s.setSyncStatus);
-  const confirmSync      = useSyncStore((s) => s.confirmSync);
+  const activeRole    = useAppStore((s) => s.activeRole);
+  const openDrawer    = useAppStore((s) => s.openDrawer);
+  const setSyncStatus = useSyncStore((s) => s.setSyncStatus);
+  const confirmSync   = useSyncStore((s) => s.confirmSync);
+  const queryClient   = useQueryClient();
 
   const { data: anomalies, isLoading, isError, error } = useAnomalies(activeRole);
 
@@ -33,6 +35,7 @@ export function ActionQueue() {
         { event: "*", schema: "public", table: "anomalies" },
         () => {
           confirmSync(new Date().toISOString());
+          queryClient.invalidateQueries({ queryKey: anomalyKeys.byRole(activeRole) });
         }
       )
       .subscribe((status) => {
@@ -42,7 +45,7 @@ export function ActionQueue() {
       });
 
     return () => { supabase.removeChannel(channel); };
-  }, [setSyncStatus, confirmSync]);
+  }, [setSyncStatus, confirmSync, activeRole, queryClient]);
 
   function handleCardClick(anomaly: Anomaly) {
     openDrawer(anomaly);
