@@ -1,6 +1,7 @@
+// app/page.tsx
 // ─────────────────────────────────────────────────────────────────────────────
 // NexOps — Command Center Home
-// CP-05.1: Role toggle wired. Ghost UI switches between WM and CEO views.
+// CP-06.2: KPI Dashboard wired to live useKPIMetrics hook. CEO view replaced.
 // ─────────────────────────────────────────────────────────────────────────────
 
 "use client";
@@ -12,6 +13,7 @@ import { AuditLedger }     from "@/components/audit/AuditLedger";
 import { DrillDownDrawer } from "@/components/drill-down/DrillDownDrawer";
 import { CommandPalette }  from "@/components/ui/CommandPalette";
 import { RoleToggle }      from "@/components/ui/RoleToggle";
+import { KPIDashboard }    from "@/components/kpi/KPIDashboard";
 import { useAppStore }     from "@/lib/stores/app.store";
 import { getRoleConfig, isModuleVisible } from "@/lib/config/roles";
 
@@ -50,7 +52,6 @@ export default function Home() {
           gap:            "16px",
         }}
       >
-        {/* Logo */}
         <span
           style={{
             fontFamily:    "var(--font-display)",
@@ -64,10 +65,8 @@ export default function Home() {
           NexOps
         </span>
 
-        {/* Center — Role Toggle */}
         <RoleToggle />
 
-        {/* Right — Actions */}
         <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
           {canViewGlobalAudit && (
             <button
@@ -98,7 +97,6 @@ export default function Home() {
       {/* ── Body ── */}
       <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
 
-        {/* Main content */}
         <main
           style={{
             flex:       1,
@@ -139,70 +137,12 @@ export default function Home() {
                 </p>
               </div>
 
-              {/* KPI placeholder — built at CP-06 */}
-              <div
-                style={{
-                  display:             "grid",
-                  gridTemplateColumns: "repeat(2, 1fr)",
-                  gap:                 "12px",
-                  marginBottom:        "32px",
-                }}
-              >
-                {[
-                  { label: "OTIF Rate",        value: "—", unit: "%"  },
-                  { label: "Avg Cost-to-Serve", value: "—", unit: "$"  },
-                  { label: "Carbon / Shipment", value: "—", unit: "kg" },
-                  { label: "On-Time %",         value: "—", unit: "%"  },
-                ].map(({ label, value, unit }) => (
-                  <div
-                    key={label}
-                    style={{
-                      background:   "var(--color-raised)",
-                      border:       "1px solid var(--color-border)",
-                      borderRadius: "10px",
-                      padding:      "20px",
-                    }}
-                  >
-                    <p
-                      style={{
-                        fontFamily:    "var(--font-mono)",
-                        fontSize:      "10px",
-                        color:         "var(--color-text-muted)",
-                        textTransform: "uppercase",
-                        letterSpacing: "0.08em",
-                        margin:        "0 0 8px 0",
-                      }}
-                    >
-                      {label}
-                    </p>
-                    <p
-                      style={{
-                        fontFamily: "var(--font-display)",
-                        fontSize:   "28px",
-                        fontWeight: 700,
-                        color:      "var(--color-text-primary)",
-                        margin:     0,
-                      }}
-                    >
-                      {value}
-                      <span
-                        style={{
-                          fontFamily: "var(--font-mono)",
-                          fontSize:   "12px",
-                          color:      "var(--color-text-muted)",
-                          marginLeft: "4px",
-                        }}
-                      >
-                        {unit}
-                      </span>
-                    </p>
-                  </div>
-                ))}
-              </div>
+              {/* ── Live KPI Grid — CP-06.2 ── */}
+              <KPIDashboard />
             </div>
           )}
 
-          {/* ── Action Queue — both roles, filtered by severity ── */}
+          {/* ── Action Queue — both roles ── */}
           <div style={{ marginBottom: "20px" }}>
             <h2
               style={{
