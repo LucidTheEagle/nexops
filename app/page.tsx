@@ -11,6 +11,7 @@ import { SyncDot }         from "@/components/ui/SyncDot";
 import { AuditLedger }     from "@/components/audit/AuditLedger";
 import { useAppStore }     from "@/lib/stores/app.store";
 import { getRoleConfig, isModuleVisible } from "@/lib/config/roles";
+import { CommandPalette } from "@/components/ui/CommandPalette";
 
 export default function Home() {
   const activeRole = useAppStore((s) => s.activeRole);
@@ -149,6 +150,7 @@ export default function Home() {
           </aside>
         )}
       </div>
+      <CommandPalette />
     </div>
   );
 }

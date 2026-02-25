@@ -60,3 +60,17 @@
   ::-webkit-scrollbar-thumb { background: var(--color-muted-bg); border-radius: 2px; }
   ::-webkit-scrollbar-thumb:hover { background: var(--color-indigo); }
 }
+
+/* ── Command Palette ── */
+[cmdk-item][data-selected="true"] {
+  background: var(--color-muted-bg);
+  color:      var(--color-text-primary);
+}
+
+[cmdk-item]:hover {
+  background: var(--color-raised);
+}
+
+[cmdk-input]::placeholder {
+  color: var(--color-text-muted);
+}
