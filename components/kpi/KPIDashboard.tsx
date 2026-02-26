@@ -3,6 +3,7 @@
 // NexOps — KPI Dashboard
 // CEO-only. Reads from useKPIMetrics + useAnomalies for critical count.
 // Skeleton state while loading. Zero hardcoded values.
+// CP-07.2: Full Tailwind conversion. Responsive grid: 1col mobile, 2col sm+.
 // ─────────────────────────────────────────────────────────────────────────────
 
 "use client";
@@ -12,47 +13,27 @@ import { useAnomalies }   from "@/lib/hooks/useAnomalies";
 import { useAppStore }    from "@/lib/stores/app.store";
 import { usePredictiveAnomalyDetection } from "@/lib/hooks/usePredictiveAnomalyDetection";
 
-// ── Skeleton card ─────────────────────────────────────────────────────────────
+// ── Skeleton ──────────────────────────────────────────────────────────────────
 
 function KPISkeleton() {
   return (
-    <div
-      style={{
-        display:             "grid",
-        gridTemplateColumns: "repeat(2, 1fr)",
-        gap:                 "12px",
-        marginBottom:        "32px",
-      }}
-    >
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-8">
       {Array.from({ length: 4 }).map((_, i) => (
         <div
           key={i}
+          className="rounded-[10px] p-5 h-[88px] flex flex-col gap-3"
           style={{
-            background:   "var(--color-raised)",
-            border:       "1px solid var(--color-border)",
-            borderRadius: "10px",
-            padding:      "20px",
-            height:       "88px",
+            background: "var(--color-raised)",
+            border:     "1px solid var(--color-border)",
           }}
         >
           <div
-            style={{
-              width:        "80px",
-              height:       "10px",
-              borderRadius: "4px",
-              background:   "var(--color-muted-bg)",
-              marginBottom: "12px",
-              opacity:      0.6,
-            }}
+            className="w-20 h-2.5 rounded opacity-60"
+            style={{ background: "var(--color-muted-bg)" }}
           />
           <div
-            style={{
-              width:        "60px",
-              height:       "24px",
-              borderRadius: "4px",
-              background:   "var(--color-muted-bg)",
-              opacity:      0.4,
-            }}
+            className="w-16 h-6 rounded opacity-40"
+            style={{ background: "var(--color-muted-bg)" }}
           />
         </div>
       ))}
@@ -63,77 +44,53 @@ function KPISkeleton() {
 // ── KPI Card ──────────────────────────────────────────────────────────────────
 
 interface KPICardProps {
-  label:     string;
-  value:     string;
-  unit:      string;
+  label:      string;
+  value:      string;
+  unit:       string;
   highlight?: "live" | "warning" | "critical" | "muted";
-  sublabel?: string;
+  sublabel?:  string;
 }
 
 function KPICard({ label, value, unit, highlight, sublabel }: KPICardProps) {
   const valueColor =
-    highlight === "live"     ? "var(--color-live)"     :
-    highlight === "warning"  ? "var(--color-warning)"  :
-    highlight === "critical" ? "var(--color-critical)" :
+    highlight === "live"     ? "var(--color-live)"       :
+    highlight === "warning"  ? "var(--color-warning)"    :
+    highlight === "critical" ? "var(--color-critical)"   :
     highlight === "muted"    ? "var(--color-text-muted)" :
     "var(--color-text-primary)";
 
   return (
     <div
+      className="rounded-[10px] p-5 flex flex-col gap-1.5"
       style={{
-        background:   "var(--color-raised)",
-        border:       `1px solid var(--color-border)`,
-        borderRadius: "10px",
-        padding:      "20px",
-        display:      "flex",
-        flexDirection: "column",
-        gap:          "6px",
+        background: "var(--color-raised)",
+        border:     "1px solid var(--color-border)",
       }}
     >
       <p
-        style={{
-          fontFamily:    "var(--font-mono)",
-          fontSize:      "10px",
-          color:         "var(--color-text-muted)",
-          textTransform: "uppercase",
-          letterSpacing: "0.08em",
-          margin:        0,
-        }}
+        className="text-[10px] uppercase tracking-widest m-0"
+        style={{ fontFamily: "var(--font-mono)", color: "var(--color-text-muted)" }}
       >
         {label}
       </p>
+
       <p
-        style={{
-          fontFamily: "var(--font-display)",
-          fontSize:   "28px",
-          fontWeight: 700,
-          color:      valueColor,
-          margin:     0,
-          lineHeight: 1,
-        }}
+        className="text-[28px] font-bold leading-none m-0"
+        style={{ fontFamily: "var(--font-display)", color: valueColor }}
       >
         {value}
         <span
-          style={{
-            fontFamily:  "var(--font-mono)",
-            fontSize:    "12px",
-            color:       "var(--color-text-muted)",
-            marginLeft:  "4px",
-            fontWeight:  400,
-          }}
+          className="text-[12px] font-normal ml-1"
+          style={{ fontFamily: "var(--font-mono)", color: "var(--color-text-muted)" }}
         >
           {unit}
         </span>
       </p>
+
       {sublabel && (
         <p
-          style={{
-            fontFamily: "var(--font-mono)",
-            fontSize:   "10px",
-            color:      "var(--color-text-muted)",
-            margin:     0,
-            opacity:    0.7,
-          }}
+          className="text-[10px] m-0 opacity-70"
+          style={{ fontFamily: "var(--font-mono)", color: "var(--color-text-muted)" }}
         >
           {sublabel}
         </p>
@@ -148,23 +105,20 @@ export function KPIDashboard() {
   const activeRole = useAppStore((s) => s.activeRole);
   usePredictiveAnomalyDetection(activeRole);
 
-  const { data: kpi,       isLoading: kpiLoading,  isError: kpiError  } = useKPIMetrics();
-  const { data: anomalies, isLoading: anomLoading                       } = useAnomalies(activeRole);
+  const { data: kpi,       isLoading: kpiLoading, isError: kpiError } = useKPIMetrics();
+  const { data: anomalies, isLoading: anomLoading                    } = useAnomalies(activeRole);
 
   if (kpiLoading || anomLoading) return <KPISkeleton />;
 
   if (kpiError || !kpi) {
     return (
       <div
+        className="p-5 rounded-[10px] mb-8 text-[12px]"
         style={{
-          padding:      "20px",
-          borderRadius: "10px",
-          border:       "1px solid var(--color-critical)",
-          background:   "rgba(244,63,94,0.08)",
-          marginBottom: "32px",
-          fontFamily:   "var(--font-mono)",
-          fontSize:     "12px",
-          color:        "var(--color-critical)",
+          border:     "1px solid var(--color-critical)",
+          background: "rgba(244,63,94,0.08)",
+          fontFamily: "var(--font-mono)",
+          color:      "var(--color-critical)",
         }}
       >
         KPI data unavailable — check Supabase connection
@@ -172,38 +126,29 @@ export function KPIDashboard() {
     );
   }
 
-  // Count criticals from live anomaly query — no hardcoded value
   const criticalCount = (anomalies ?? []).filter(
     (a) => a.severity === "CRITICAL" && a.anomaly_status !== "RESOLVED"
   ).length;
 
-  // Derive highlight states from actual values
   const otifHighlight =
-    kpi.otif_rate >= 90 ? "live" :
-    kpi.otif_rate >= 70 ? "warning" :
+    kpi.otif_rate >= 90 ? "live"     :
+    kpi.otif_rate >= 70 ? "warning"  :
     kpi.otif_rate > 0   ? "critical" :
     "muted";
 
   const onTimeHighlight =
-    kpi.on_time_percentage >= 85 ? "live" :
-    kpi.on_time_percentage >= 65 ? "warning" :
+    kpi.on_time_percentage >= 85 ? "live"     :
+    kpi.on_time_percentage >= 65 ? "warning"  :
     kpi.on_time_percentage > 0   ? "critical" :
     "muted";
 
   const criticalHighlight =
-    criticalCount === 0 ? "live" :
-    criticalCount <= 2  ? "warning" :
+    criticalCount === 0 ? "live"     :
+    criticalCount <= 2  ? "warning"  :
     "critical";
 
   return (
-    <div
-      style={{
-        display:             "grid",
-        gridTemplateColumns: "repeat(2, 1fr)",
-        gap:                 "12px",
-        marginBottom:        "32px",
-      }}
-    >
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-8">
       <KPICard
         label="OTIF Rate"
         value={kpi.otif_rate > 0 ? kpi.otif_rate.toString() : "—"}
@@ -243,8 +188,8 @@ export function KPIDashboard() {
         highlight={onTimeHighlight}
       />
 
-      {/* ── Critical Escalations count — spans full width ── */}
-      <div style={{ gridColumn: "1 / -1" }}>
+      {/* Critical Anomalies — spans full width at all breakpoints */}
+      <div className="col-span-full">
         <KPICard
           label="Critical Anomalies"
           value={criticalCount.toString()}

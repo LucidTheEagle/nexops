@@ -35,19 +35,25 @@ export default function Home() {
 
   return (
     <div
-      className="min-h-screen flex flex-col"
+      className="min-h-screen flex flex-col pb-safe"
       style={{ background: "var(--color-surface)" }}
     >
       {/* ── Top Bar ── */}
       <header
-        className="flex items-center justify-between px-6 py-3 sticky top-0 z-50 gap-4 shrink-0"
+        className="
+          flex items-center justify-between
+          px-4 md:px-6 py-3
+          sticky top-0 z-50 shrink-0
+          pt-safe
+        "
         style={{
           borderBottom: "1px solid var(--color-border)",
           background:   "var(--color-raised)",
         }}
       >
+        {/* Logo */}
         <span
-          className="shrink-0 text-[20px] font-extrabold tracking-[-0.03em]"
+          className="shrink-0 text-[18px] md:text-[20px] font-extrabold tracking-[-0.03em]"
           style={{
             fontFamily: "var(--font-display)",
             color:      "var(--color-violet)",
@@ -56,13 +62,19 @@ export default function Home() {
           NexOps
         </span>
 
+        {/* Center — Role Toggle */}
         <RoleToggle />
 
-        <div className="flex items-center gap-3">
+        {/* Right — Actions */}
+        <div className="flex items-center gap-2 md:gap-3">
           {canViewGlobalAudit && (
             <button
               onClick={() => setAuditOpen((o) => !o)}
-              className="min-h-[44px] px-3 rounded-md text-[10px] font-semibold uppercase tracking-widest transition-all duration-150 ease-out"
+              className="
+                min-h-[44px] px-2 md:px-3 rounded-md
+                text-[10px] font-semibold uppercase tracking-widest
+                transition-all duration-150 ease-out
+              "
               style={{
                 fontFamily: "var(--font-mono)",
                 color:      auditOpen ? "var(--color-text-secondary)" : "var(--color-text-muted)",
@@ -71,7 +83,9 @@ export default function Home() {
                 cursor:     "pointer",
               }}
             >
-              Audit Trace
+              {/* Abbreviated on mobile */}
+              <span className="hidden sm:inline">Audit Trace</span>
+              <span className="sm:hidden">Audit</span>
             </button>
           )}
           {isModuleVisible(activeRole, "sync_status") && <SyncDot />}
@@ -83,17 +97,18 @@ export default function Home() {
 
         {/* ── Main scroll column ── */}
         <main
-          className="flex-1 overflow-y-auto py-8 px-6"
+          className="flex-1 overflow-y-auto py-6 md:py-8 px-4 md:px-6"
           style={{
             maxWidth: auditOpen ? "100%" : "720px",
             margin:   auditOpen ? "0" : "0 auto",
           }}
         >
+          {/* CEO View */}
           {isCEO && (
             <div className="mb-8">
               <div className="mb-5">
                 <h1
-                  className="text-[22px] font-bold tracking-[-0.02em] m-0"
+                  className="text-[18px] md:text-[22px] font-bold tracking-[-0.02em] m-0"
                   style={{
                     fontFamily: "var(--font-display)",
                     color:      "var(--color-text-primary)",
@@ -102,7 +117,7 @@ export default function Home() {
                   Operations Overview
                 </h1>
                 <p
-                  className="text-[11px] uppercase tracking-widest mt-1"
+                  className="text-[10px] md:text-[11px] uppercase tracking-widest mt-1"
                   style={{
                     fontFamily: "var(--font-mono)",
                     color:      "var(--color-text-muted)",
@@ -115,19 +130,20 @@ export default function Home() {
             </div>
           )}
 
+          {/* Action Queue header */}
           <div className="mb-5">
             <h2
               className="font-bold tracking-[-0.02em] m-0"
               style={{
                 fontFamily: "var(--font-display)",
-                fontSize:   isCEO ? "16px" : "22px",
+                fontSize:   isCEO ? "16px" : "20px",
                 color:      "var(--color-text-primary)",
               }}
             >
               {isCEO ? "Critical Escalations" : "Action Queue"}
             </h2>
             <p
-              className="text-[11px] uppercase tracking-widest mt-1"
+              className="text-[10px] md:text-[11px] uppercase tracking-widest mt-1"
               style={{
                 fontFamily: "var(--font-mono)",
                 color:      "var(--color-text-muted)",
@@ -143,7 +159,7 @@ export default function Home() {
           {isModuleVisible(activeRole, "action_queue_condensed") && <ActionQueue />}
         </main>
 
-        {/* ── Audit backdrop — click outside to close ── */}
+        {/* ── Audit backdrop ── */}
         {auditOpen && (
           <div
             className="absolute inset-0 z-10"
@@ -153,15 +169,22 @@ export default function Home() {
           />
         )}
 
-        {/* ── Audit Sidebar — fixed to right edge, independent scroll ── */}
+        {/* ── Audit Sidebar
+              Desktop (md+): 380px panel on right edge
+              Mobile (<md):  full width overlay
+        ── */}
         {auditOpen && (
           <aside
-            className="absolute top-0 right-0 bottom-0 z-20 w-[380px] overflow-y-auto flex flex-col shrink-0"
+            className="
+              absolute top-0 right-0 bottom-0 z-20
+              w-full md:w-[380px]
+              overflow-y-auto flex flex-col
+              pb-safe
+            "
             style={{
               borderLeft: "1px solid var(--color-border)",
               background: "var(--color-raised)",
             }}
-            // Prevent backdrop click from firing when clicking inside sidebar
             onClick={(e) => e.stopPropagation()}
           >
             <AuditLedger />
