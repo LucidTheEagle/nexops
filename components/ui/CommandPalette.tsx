@@ -1,9 +1,3 @@
-// ─────────────────────────────────────────────────────────────────────────────
-// NexOps — Command Palette
-// Keyboard-first global navigation. Triggered by Cmd+K / Ctrl+K.
-// Items driven by getRoleConfig().commandPaletteItems — zero hardcoding.
-// ─────────────────────────────────────────────────────────────────────────────
-
 "use client";
 
 import { useEffect, useCallback } from "react";
@@ -11,7 +5,6 @@ import { Command }                from "cmdk";
 import { useAppStore }            from "@/lib/stores/app.store";
 import { getRoleConfig }          from "@/lib/config/roles";
 
-// Route map — command label to path
 const COMMAND_ROUTES: Record<string, string> = {
   "Shipments":     "/shipments",
   "Drivers":       "/drivers",
@@ -41,20 +34,17 @@ const COMMAND_ICONS: Record<string, string> = {
 };
 
 export function CommandPalette() {
-  const open                = useAppStore((s) => s.commandPaletteOpen);
-  const setOpen             = useAppStore((s) => s.setCommandPaletteOpen);
-  const activeRole          = useAppStore((s) => s.activeRole);
-  const roleConfig          = getRoleConfig(activeRole);
+  const open       = useAppStore((s) => s.commandPaletteOpen);
+  const setOpen    = useAppStore((s) => s.setCommandPaletteOpen);
+  const activeRole = useAppStore((s) => s.activeRole);
+  const roleConfig = getRoleConfig(activeRole);
 
-  // ── Keyboard listener ─────────────────────────────────────────────────────
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if ((e.metaKey || e.ctrlKey) && e.key === "k") {
       e.preventDefault();
       setOpen(true);
     }
-    if (e.key === "Escape") {
-      setOpen(false);
-    }
+    if (e.key === "Escape") setOpen(false);
   }, [setOpen]);
 
   useEffect(() => {
@@ -66,15 +56,17 @@ export function CommandPalette() {
 
   return (
     <>
-      {/* Backdrop */}
       <div
         onClick={() => setOpen(false)}
         className="fixed inset-0 z-50"
+        aria-hidden="true"
         style={{ background: "rgba(15,10,30,0.8)", backdropFilter: "blur(4px)" }}
       />
 
-      {/* Palette */}
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Command palette"
         className="fixed left-1/2 z-50"
         style={{
           top:       "20%",
@@ -92,20 +84,15 @@ export function CommandPalette() {
             boxShadow:    "0 24px 64px rgba(0,0,0,0.6)",
           }}
         >
-          {/* Search input */}
           <div
-            style={{
-              display:     "flex",
-              alignItems:  "center",
-              gap:         "10px",
-              padding:     "14px 16px",
-              borderBottom: "1px solid var(--color-border)",
-            }}
+            className="flex items-center gap-2.5 px-4 py-3.5 border-b"
+            style={{ borderColor: "var(--color-border)" }}
           >
             <span style={{ color: "var(--color-text-muted)", fontSize: "14px" }}>⌘</span>
             <Command.Input
               autoFocus
               placeholder="Type a command or search..."
+              aria-label="Search commands"
               style={{
                 flex:       1,
                 background: "transparent",
@@ -117,46 +104,34 @@ export function CommandPalette() {
               }}
             />
             <kbd
+              className="text-[10px] px-1.5 py-0.5 rounded"
               style={{
-                fontFamily:    "var(--font-mono)",
-                fontSize:      "10px",
-                color:         "var(--color-text-muted)",
-                background:    "var(--color-raised)",
-                border:        "1px solid var(--color-border)",
-                borderRadius:  "4px",
-                padding:       "2px 6px",
+                fontFamily:  "var(--font-mono)",
+                color:       "var(--color-text-muted)",
+                background:  "var(--color-raised)",
+                border:      "1px solid var(--color-border)",
               }}
             >
               ESC
             </kbd>
           </div>
 
-          <Command.List style={{ maxHeight: "320px", overflowY: "auto", padding: "8px" }}>
+          <Command.List
+            className="overflow-y-auto p-2"
+            style={{ maxHeight: "320px" }}
+          >
             <Command.Empty
-              style={{
-                fontFamily: "var(--font-mono)",
-                fontSize:   "12px",
-                color:      "var(--color-text-muted)",
-                padding:    "16px",
-                textAlign:  "center",
-              }}
+              className="text-center p-4"
+              style={{ fontFamily: "var(--font-mono)", fontSize: "12px", color: "var(--color-text-muted)" }}
             >
               No results found.
             </Command.Empty>
 
-            {/* Role-specific navigation items */}
             <Command.Group
               heading={
                 <span
-                  style={{
-                    fontFamily:    "var(--font-mono)",
-                    fontSize:      "9px",
-                    color:         "var(--color-text-muted)",
-                    textTransform: "uppercase",
-                    letterSpacing: "0.1em",
-                    padding:       "4px 8px",
-                    display:       "block",
-                  }}
+                  className="text-[9px] uppercase tracking-widest px-2 py-1 block"
+                  style={{ fontFamily: "var(--font-mono)", color: "var(--color-text-muted)" }}
                 >
                   Navigate — {roleConfig.label}
                 </span>
@@ -170,32 +145,18 @@ export function CommandPalette() {
                     console.log(`[CommandPalette] Navigate to: ${COMMAND_ROUTES[item] ?? "/"}`);
                     setOpen(false);
                   }}
-                  style={{
-                    display:      "flex",
-                    alignItems:   "center",
-                    gap:          "10px",
-                    padding:      "10px 8px",
-                    borderRadius: "6px",
-                    cursor:       "pointer",
-                    fontFamily:   "var(--font-sans)",
-                    fontSize:     "13px",
-                    color:        "var(--color-text-primary)",
-                  }}
-                  className="command-item"
+                  className="flex items-center gap-2.5 px-2 py-2.5 rounded-md cursor-pointer min-h-[44px] transition-colors duration-150 ease-out"
+                  style={{ fontFamily: "var(--font-sans)", fontSize: "13px", color: "var(--color-text-primary)" }}
                 >
-                  <span style={{ fontSize: "14px", width: "20px", textAlign: "center" }}>
-                    {COMMAND_ICONS[item] ?? "→"}
-                  </span>
-                  <span style={{ flex: 1 }}>{item}</span>
+                  <span className="text-sm w-5 text-center">{COMMAND_ICONS[item] ?? "→"}</span>
+                  <span className="flex-1">{item}</span>
                   <span
+                    className="text-[10px] px-1.5 py-0.5 rounded"
                     style={{
-                      fontFamily:    "var(--font-mono)",
-                      fontSize:      "10px",
-                      color:         "var(--color-text-muted)",
-                      background:    "var(--color-raised)",
-                      border:        "1px solid var(--color-border)",
-                      borderRadius:  "4px",
-                      padding:       "2px 6px",
+                      fontFamily:  "var(--font-mono)",
+                      color:       "var(--color-text-muted)",
+                      background:  "var(--color-raised)",
+                      border:      "1px solid var(--color-border)",
                     }}
                   >
                     ↵
@@ -205,15 +166,9 @@ export function CommandPalette() {
             </Command.Group>
           </Command.List>
 
-          {/* Footer */}
           <div
-            style={{
-              display:      "flex",
-              alignItems:   "center",
-              gap:          "12px",
-              padding:      "8px 16px",
-              borderTop:    "1px solid var(--color-border)",
-            }}
+            className="flex items-center gap-3 px-4 py-2 border-t"
+            style={{ borderColor: "var(--color-border)" }}
           >
             {[
               { key: "↑↓", label: "Navigate" },
@@ -222,22 +177,14 @@ export function CommandPalette() {
             ].map(({ key, label }) => (
               <span
                 key={key}
-                style={{
-                  fontFamily: "var(--font-mono)",
-                  fontSize:   "10px",
-                  color:      "var(--color-text-muted)",
-                  display:    "flex",
-                  alignItems: "center",
-                  gap:        "4px",
-                }}
+                className="flex items-center gap-1 text-[10px]"
+                style={{ fontFamily: "var(--font-mono)", color: "var(--color-text-muted)" }}
               >
                 <kbd
+                  className="px-1 py-px rounded text-[10px]"
                   style={{
-                    background:   "var(--color-raised)",
-                    border:       "1px solid var(--color-border)",
-                    borderRadius: "3px",
-                    padding:      "1px 5px",
-                    fontSize:     "10px",
+                    background: "var(--color-raised)",
+                    border:     "1px solid var(--color-border)",
                   }}
                 >
                   {key}

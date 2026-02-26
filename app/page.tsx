@@ -1,12 +1,7 @@
 // app/page.tsx
-// ─────────────────────────────────────────────────────────────────────────────
-// NexOps — Command Center Home
-// CP-06.2: KPI Dashboard wired to live useKPIMetrics hook. CEO view replaced.
-// ─────────────────────────────────────────────────────────────────────────────
-
 "use client";
 
-import { useState }        from "react";
+import { useState, useEffect } from "react";
 import { ActionQueue }     from "@/components/action-queue/ActionQueue";
 import { SyncDot }         from "@/components/ui/SyncDot";
 import { AuditLedger }     from "@/components/audit/AuditLedger";
@@ -28,38 +23,34 @@ export default function Home() {
 
   const isCEO = activeRole === "ceo";
 
+  // Lock body scroll when audit sidebar is open
+  useEffect(() => {
+    if (auditOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => { document.body.style.overflow = ""; };
+  }, [auditOpen]);
+
   return (
     <div
-      style={{
-        minHeight:     "100vh",
-        background:    "var(--color-surface)",
-        display:       "flex",
-        flexDirection: "column",
-      }}
+      className="min-h-screen flex flex-col"
+      style={{ background: "var(--color-surface)" }}
     >
       {/* ── Top Bar ── */}
       <header
+        className="flex items-center justify-between px-6 py-3 sticky top-0 z-50 gap-4 shrink-0"
         style={{
-          display:        "flex",
-          alignItems:     "center",
-          justifyContent: "space-between",
-          padding:        "12px 24px",
-          borderBottom:   "1px solid var(--color-border)",
-          background:     "var(--color-raised)",
-          position:       "sticky",
-          top:            0,
-          zIndex:         50,
-          gap:            "16px",
+          borderBottom: "1px solid var(--color-border)",
+          background:   "var(--color-raised)",
         }}
       >
         <span
+          className="shrink-0 text-[20px] font-extrabold tracking-[-0.03em]"
           style={{
-            fontFamily:    "var(--font-display)",
-            fontSize:      "20px",
-            fontWeight:    800,
-            color:         "var(--color-violet)",
-            letterSpacing: "-0.03em",
-            flexShrink:    0,
+            fontFamily: "var(--font-display)",
+            color:      "var(--color-violet)",
           }}
         >
           NexOps
@@ -67,106 +58,84 @@ export default function Home() {
 
         <RoleToggle />
 
-        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+        <div className="flex items-center gap-3">
           {canViewGlobalAudit && (
             <button
               onClick={() => setAuditOpen((o) => !o)}
+              className="min-h-[44px] px-3 rounded-md text-[10px] font-semibold uppercase tracking-widest transition-all duration-150 ease-out"
               style={{
-                fontFamily:    "var(--font-mono)",
-                fontSize:      "10px",
-                color:         auditOpen ? "var(--color-text-secondary)" : "var(--color-text-muted)",
-                background:    auditOpen ? "rgba(99,102,241,0.15)" : "transparent",
-                border:        `1px solid ${auditOpen ? "var(--color-indigo)" : "var(--color-border)"}`,
-                borderRadius:  "6px",
-                padding:       "6px 12px",
-                cursor:        "pointer",
-                textTransform: "uppercase",
-                letterSpacing: "0.08em",
-                fontWeight:    600,
-                transition:    "all 150ms ease",
+                fontFamily: "var(--font-mono)",
+                color:      auditOpen ? "var(--color-text-secondary)" : "var(--color-text-muted)",
+                background: auditOpen ? "rgba(99,102,241,0.15)" : "transparent",
+                border:     `1px solid ${auditOpen ? "var(--color-indigo)" : "var(--color-border)"}`,
+                cursor:     "pointer",
               }}
             >
               Audit Trace
             </button>
           )}
-
           {isModuleVisible(activeRole, "sync_status") && <SyncDot />}
         </div>
       </header>
 
       {/* ── Body ── */}
-      <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
+      <div className="flex flex-1 overflow-hidden relative">
 
+        {/* ── Main scroll column ── */}
         <main
+          className="flex-1 overflow-y-auto py-8 px-6"
           style={{
-            flex:       1,
-            overflowY:  "auto",
-            padding:    "32px 24px",
-            maxWidth:   auditOpen ? "100%" : "720px",
-            margin:     auditOpen ? "0" : "0 auto",
-            transition: "all 200ms ease",
+            maxWidth: auditOpen ? "100%" : "720px",
+            margin:   auditOpen ? "0" : "0 auto",
           }}
         >
-          {/* ── CEO View ── */}
           {isCEO && (
-            <div style={{ marginBottom: "32px" }}>
-              <div style={{ marginBottom: "20px" }}>
+            <div className="mb-8">
+              <div className="mb-5">
                 <h1
+                  className="text-[22px] font-bold tracking-[-0.02em] m-0"
                   style={{
-                    fontFamily:    "var(--font-display)",
-                    fontSize:      "22px",
-                    fontWeight:    700,
-                    color:         "var(--color-text-primary)",
-                    letterSpacing: "-0.02em",
-                    margin:        0,
+                    fontFamily: "var(--font-display)",
+                    color:      "var(--color-text-primary)",
                   }}
                 >
                   Operations Overview
                 </h1>
                 <p
+                  className="text-[11px] uppercase tracking-widest mt-1"
                   style={{
-                    fontFamily:    "var(--font-mono)",
-                    fontSize:      "11px",
-                    color:         "var(--color-text-muted)",
-                    marginTop:     "4px",
-                    textTransform: "uppercase",
-                    letterSpacing: "0.08em",
+                    fontFamily: "var(--font-mono)",
+                    color:      "var(--color-text-muted)",
                   }}
                 >
                   KPI Dashboard — Live
                 </p>
               </div>
-
-              {/* ── Live KPI Grid — CP-06.2 ── */}
               <KPIDashboard />
             </div>
           )}
 
-          {/* ── Action Queue — both roles ── */}
-          <div style={{ marginBottom: "20px" }}>
+          <div className="mb-5">
             <h2
+              className="font-bold tracking-[-0.02em] m-0"
               style={{
-                fontFamily:    "var(--font-display)",
-                fontSize:      isCEO ? "16px" : "22px",
-                fontWeight:    700,
-                color:         "var(--color-text-primary)",
-                letterSpacing: "-0.02em",
-                margin:        0,
+                fontFamily: "var(--font-display)",
+                fontSize:   isCEO ? "16px" : "22px",
+                color:      "var(--color-text-primary)",
               }}
             >
               {isCEO ? "Critical Escalations" : "Action Queue"}
             </h2>
             <p
+              className="text-[11px] uppercase tracking-widest mt-1"
               style={{
-                fontFamily:    "var(--font-mono)",
-                fontSize:      "11px",
-                color:         "var(--color-text-muted)",
-                marginTop:     "4px",
-                textTransform: "uppercase",
-                letterSpacing: "0.08em",
+                fontFamily: "var(--font-mono)",
+                color:      "var(--color-text-muted)",
               }}
             >
-              {isCEO ? "Critical Only" : `Priority Inbox — ${roleConfig.anomalySeverityFilter.join(" · ")}`}
+              {isCEO
+                ? "Critical Only"
+                : `Priority Inbox — ${roleConfig.anomalySeverityFilter.join(" · ")}`}
             </p>
           </div>
 
@@ -174,23 +143,32 @@ export default function Home() {
           {isModuleVisible(activeRole, "action_queue_condensed") && <ActionQueue />}
         </main>
 
-        {/* ── Audit Sidebar ── */}
+        {/* ── Audit backdrop — click outside to close ── */}
+        {auditOpen && (
+          <div
+            className="absolute inset-0 z-10"
+            aria-hidden="true"
+            onClick={() => setAuditOpen(false)}
+            style={{ background: "rgba(15,10,30,0.4)" }}
+          />
+        )}
+
+        {/* ── Audit Sidebar — fixed to right edge, independent scroll ── */}
         {auditOpen && (
           <aside
+            className="absolute top-0 right-0 bottom-0 z-20 w-[380px] overflow-y-auto flex flex-col shrink-0"
             style={{
-              width:         "380px",
-              minWidth:      "380px",
-              borderLeft:    "1px solid var(--color-border)",
-              background:    "var(--color-raised)",
-              overflowY:     "auto",
-              display:       "flex",
-              flexDirection: "column",
+              borderLeft: "1px solid var(--color-border)",
+              background: "var(--color-raised)",
             }}
+            // Prevent backdrop click from firing when clicking inside sidebar
+            onClick={(e) => e.stopPropagation()}
           >
             <AuditLedger />
           </aside>
         )}
       </div>
+
       <DrillDownDrawer />
       <CommandPalette />
     </div>

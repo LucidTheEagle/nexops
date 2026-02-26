@@ -1,15 +1,9 @@
-// ─────────────────────────────────────────────────────────────────────────────
-// NexOps — Drill-Down Drawer
-// Slides in from right on anomaly card click.
-// Four sections per Flow Map 2: Header, Driver, Timeline, Audit.
-// Never navigates — context is never lost.
-// ─────────────────────────────────────────────────────────────────────────────
-
 "use client";
 
-import { useAppStore }      from "@/lib/stores/app.store";
-import { useDrillDownData } from "@/lib/hooks/useShipment";
-import { AuditEntry }       from "@/components/audit/AuditEntry";
+import { useEffect, useRef }  from "react";
+import { useAppStore }        from "@/lib/stores/app.store";
+import { useDrillDownData }   from "@/lib/hooks/useShipment";
+import { AuditEntry }         from "@/components/audit/AuditEntry";
 import {
   formatRelativeTime,
   formatAbsoluteTime,
@@ -33,17 +27,78 @@ const RECORDED_BY_LABEL: Record<string, string> = {
   system: "System",
 };
 
+// ── Focus Trap ────────────────────────────────────────────────────────────────
+// Captures Tab/Shift+Tab inside the drawer. No external library.
+
+function useFocusTrap(active: boolean, containerRef: React.RefObject<HTMLElement | null>) {
+  useEffect(() => {
+    if (!active || !containerRef.current) return;
+
+    const container = containerRef.current;
+
+    // Focus the first focusable element on open
+    const focusable = container.querySelectorAll<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    focusable[0]?.focus();
+
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key !== "Tab") return;
+
+      // Re-query in case DOM changed
+      const els = Array.from(
+        container.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        )
+      );
+      if (els.length === 0) return;
+
+      const firstEl = els[0];
+      const lastEl  = els[els.length - 1];
+
+      if (e.shiftKey) {
+        if (document.activeElement === firstEl) {
+          e.preventDefault();
+          lastEl.focus();
+        }
+      } else {
+        if (document.activeElement === lastEl) {
+          e.preventDefault();
+          firstEl.focus();
+        }
+      }
+    }
+
+    container.addEventListener("keydown", handleKeyDown);
+    return () => container.removeEventListener("keydown", handleKeyDown);
+  }, [active, containerRef]);
+}
+
+// ── Drawer ────────────────────────────────────────────────────────────────────
+
 export function DrillDownDrawer() {
   const drawerOpen      = useAppStore((s) => s.drawerOpen);
   const selectedAnomaly = useAppStore((s) => s.selectedAnomaly);
   const closeDrawer     = useAppStore((s) => s.closeDrawer);
+  const drawerRef       = useRef<HTMLElement>(null);
 
-  // Only fetch for shipment anomalies for now
   const shipmentId = selectedAnomaly?.entity_type === "shipment"
     ? selectedAnomaly.entity_id
     : null;
 
   const { data, isLoading, isError } = useDrillDownData(shipmentId);
+
+  useFocusTrap(drawerOpen, drawerRef);
+
+  // Close on Escape — redundant with focus trap but explicit
+  useEffect(() => {
+    if (!drawerOpen) return;
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === "Escape") closeDrawer();
+    }
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [drawerOpen, closeDrawer]);
 
   if (!drawerOpen) return null;
 
@@ -52,66 +107,49 @@ export function DrillDownDrawer() {
       {/* Backdrop */}
       <div
         onClick={closeDrawer}
-        style={{
-          position:   "fixed",
-          inset:      0,
-          zIndex:     40,
-          background: "rgba(15,10,30,0.5)",
-        }}
+        className="fixed inset-0 z-40"
+        aria-hidden="true"
+        style={{ background: "rgba(15,10,30,0.5)" }}
       />
 
       {/* Drawer */}
       <aside
+        ref={drawerRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Shipment detail"
+        className="fixed top-0 right-0 bottom-0 z-41 flex flex-col overflow-y-auto"
         style={{
-          position:      "fixed",
-          top:           0,
-          right:         0,
-          bottom:        0,
-          width:         "min(480px, 92vw)",
-          zIndex:        41,
-          background:    "var(--color-overlay)",
-          borderLeft:    "1px solid var(--color-border)",
-          display:       "flex",
-          flexDirection: "column",
-          overflowY:     "auto",
+          width:      "min(480px, 92vw)",
+          background: "var(--color-overlay)",
+          borderLeft: "1px solid var(--color-border)",
         }}
       >
-        {/* Drawer Header */}
+        {/* Header */}
         <div
+          className="flex items-center justify-between px-5 py-4 sticky top-0 z-10 border-b"
           style={{
-            display:        "flex",
-            alignItems:     "center",
-            justifyContent: "space-between",
-            padding:        "16px 20px",
-            borderBottom:   "1px solid var(--color-border)",
-            position:       "sticky",
-            top:            0,
-            background:     "var(--color-overlay)",
-            zIndex:         1,
+            background:   "var(--color-overlay)",
+            borderColor:  "var(--color-border)",
           }}
         >
           <span
-            style={{
-              fontFamily:    "var(--font-mono)",
-              fontSize:      "11px",
-              color:         "var(--color-text-muted)",
-              textTransform: "uppercase",
-              letterSpacing: "0.1em",
-            }}
+            className="text-[11px] uppercase tracking-widest"
+            style={{ fontFamily: "var(--font-mono)", color: "var(--color-text-muted)" }}
           >
             Shipment Detail
           </span>
+          {/* Close — min 44px touch target */}
           <button
             onClick={closeDrawer}
+            aria-label="Close shipment detail"
+            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md text-[11px] transition-colors duration-150 ease-out hover:brightness-125"
             style={{
-              background:   "transparent",
-              border:       "1px solid var(--color-border)",
-              borderRadius: "6px",
-              padding:      "4px 10px",
-              color:        "var(--color-text-muted)",
-              fontFamily:   "var(--font-mono)",
-              fontSize:     "11px",
-              cursor:       "pointer",
+              background:  "transparent",
+              border:      "1px solid var(--color-border)",
+              color:       "var(--color-text-muted)",
+              fontFamily:  "var(--font-mono)",
+              cursor:      "pointer",
             }}
           >
             ESC
@@ -120,16 +158,12 @@ export function DrillDownDrawer() {
 
         {/* Loading */}
         {isLoading && (
-          <div style={{ padding: "24px 20px", display: "flex", flexDirection: "column", gap: "12px" }}>
+          <div className="p-5 flex flex-col gap-3">
             {Array.from({ length: 4 }).map((_, i) => (
               <div
                 key={i}
-                style={{
-                  height:       "60px",
-                  background:   "var(--color-raised)",
-                  borderRadius: "8px",
-                  animation:    "pulse 1.5s ease-in-out infinite",
-                }}
+                className="h-[60px] rounded-lg animate-pulse"
+                style={{ background: "var(--color-raised)" }}
               />
             ))}
           </div>
@@ -137,8 +171,11 @@ export function DrillDownDrawer() {
 
         {/* Error */}
         {isError && (
-          <div style={{ padding: "24px 20px" }}>
-            <p style={{ fontFamily: "var(--font-mono)", fontSize: "12px", color: "var(--color-critical)" }}>
+          <div className="p-5">
+            <p
+              className="text-xs"
+              style={{ fontFamily: "var(--font-mono)", color: "var(--color-critical)" }}
+            >
               Failed to load shipment data.
             </p>
           </div>
@@ -146,108 +183,141 @@ export function DrillDownDrawer() {
 
         {/* Content */}
         {data && (
-          <div style={{ flex: 1 }}>
+          <div className="flex-1">
 
             {/* ── Section A: Shipment Header ── */}
-            <section style={{ padding: "20px", borderBottom: "1px solid var(--color-border)" }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
+            <section
+              className="p-5 border-b"
+              style={{ borderColor: "var(--color-border)" }}
+            >
+              <div className="flex items-center justify-between mb-3">
                 <span
-                  style={{
-                    fontFamily:    "var(--font-mono)",
-                    fontSize:      "11px",
-                    color:         "var(--color-text-muted)",
-                    textTransform: "uppercase",
-                    letterSpacing: "0.08em",
-                  }}
+                  className="text-[11px] uppercase tracking-widest"
+                  style={{ fontFamily: "var(--font-mono)", color: "var(--color-text-muted)" }}
                 >
                   #{data.shipment.reference_number}
                 </span>
                 <span
+                  className="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded"
                   style={{
-                    fontFamily:    "var(--font-mono)",
-                    fontSize:      "10px",
-                    fontWeight:    700,
-                    color:         STATUS_COLORS[data.shipment.current_status] ?? "var(--color-text-muted)",
-                    textTransform: "uppercase",
-                    letterSpacing: "0.08em",
-                    padding:       "3px 8px",
-                    borderRadius:  "4px",
-                    background:    `${STATUS_COLORS[data.shipment.current_status]}18`,
+                    fontFamily:  "var(--font-mono)",
+                    color:       STATUS_COLORS[data.shipment.current_status] ?? "var(--color-text-muted)",
+                    background:  `${STATUS_COLORS[data.shipment.current_status]}18`,
                   }}
                 >
                   {data.shipment.current_status.replace("_", " ")}
                 </span>
               </div>
 
-              {/* Origin → Destination */}
-              <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px" }}>
-                <span style={{ fontFamily: "var(--font-sans)", fontSize: "13px", color: "var(--color-text-primary)", fontWeight: 500 }}>
+              <div className="flex items-center gap-2 mb-4">
+                <span
+                  className="text-[13px] font-medium"
+                  style={{ fontFamily: "var(--font-sans)", color: "var(--color-text-primary)" }}
+                >
                   {data.shipment.origin}
                 </span>
-                <span style={{ color: "var(--color-text-muted)", fontSize: "12px" }}>→</span>
-                <span style={{ fontFamily: "var(--font-sans)", fontSize: "13px", color: "var(--color-text-primary)", fontWeight: 500 }}>
+                <span className="text-xs" style={{ color: "var(--color-text-muted)" }}>→</span>
+                <span
+                  className="text-[13px] font-medium"
+                  style={{ fontFamily: "var(--font-sans)", color: "var(--color-text-primary)" }}
+                >
                   {data.shipment.destination}
                 </span>
               </div>
 
-              {/* ETA comparison */}
-              <div style={{ display: "flex", gap: "16px", marginBottom: "16px" }}>
+              <div className="flex gap-4 mb-4">
                 <div>
-                  <p style={{ fontFamily: "var(--font-mono)", fontSize: "9px", color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", margin: "0 0 2px 0" }}>
+                  <p
+                    className="text-[9px] uppercase tracking-widest mb-0.5"
+                    style={{ fontFamily: "var(--font-mono)", color: "var(--color-text-muted)" }}
+                  >
                     Scheduled ETA
                   </p>
-                  <p style={{ fontFamily: "var(--font-mono)", fontSize: "12px", color: "var(--color-text-primary)", margin: 0 }}>
-                    {data.shipment.scheduled_eta
-                      ? formatAbsoluteTime(data.shipment.scheduled_eta)
-                      : "—"}
+                  <p
+                    className="text-[12px]"
+                    style={{ fontFamily: "var(--font-mono)", color: "var(--color-text-primary)" }}
+                  >
+                    {data.shipment.scheduled_eta ? formatAbsoluteTime(data.shipment.scheduled_eta) : "—"}
                   </p>
                 </div>
                 <div>
-                  <p style={{ fontFamily: "var(--font-mono)", fontSize: "9px", color: "var(--color-warning)", textTransform: "uppercase", letterSpacing: "0.08em", margin: "0 0 2px 0" }}>
+                  <p
+                    className="text-[9px] uppercase tracking-widest mb-0.5"
+                    style={{ fontFamily: "var(--font-mono)", color: "var(--color-warning)" }}
+                  >
                     Predicted ETA
                   </p>
-                  <p style={{ fontFamily: "var(--font-mono)", fontSize: "12px", color: "var(--color-warning)", margin: 0 }}>
-                    {data.shipment.predicted_eta
-                      ? formatAbsoluteTime(data.shipment.predicted_eta)
-                      : "—"}
+                  <p
+                    className="text-[12px]"
+                    style={{ fontFamily: "var(--font-mono)", color: "var(--color-warning)" }}
+                  >
+                    {data.shipment.predicted_eta ? formatAbsoluteTime(data.shipment.predicted_eta) : "—"}
                   </p>
                 </div>
               </div>
 
-              {/* Client + SLA + Cost */}
-              <div style={{ display: "flex", gap: "16px" }}>
+              <div className="flex flex-wrap gap-4">
                 <div>
-                  <p style={{ fontFamily: "var(--font-mono)", fontSize: "9px", color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", margin: "0 0 2px 0" }}>
+                  <p
+                    className="text-[9px] uppercase tracking-widest mb-0.5"
+                    style={{ fontFamily: "var(--font-mono)", color: "var(--color-text-muted)" }}
+                  >
                     Client
                   </p>
-                  <p style={{ fontFamily: "var(--font-sans)", fontSize: "12px", color: "var(--color-text-primary)", margin: 0 }}>
+                  <p
+                    className="text-[12px]"
+                    style={{ fontFamily: "var(--font-sans)", color: "var(--color-text-primary)" }}
+                  >
                     {data.client.name}
                   </p>
                 </div>
                 <div>
-                  <p style={{ fontFamily: "var(--font-mono)", fontSize: "9px", color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", margin: "0 0 2px 0" }}>
+                  <p
+                    className="text-[9px] uppercase tracking-widest mb-0.5"
+                    style={{ fontFamily: "var(--font-mono)", color: "var(--color-text-muted)" }}
+                  >
                     SLA
                   </p>
-                  <p style={{ fontFamily: "var(--font-mono)", fontSize: "12px", color: data.shipment.sla_tier === "GOLD" ? "var(--color-warning)" : "var(--color-text-muted)", margin: 0 }}>
+                  <p
+                    className="text-[12px]"
+                    style={{
+                      fontFamily: "var(--font-mono)",
+                      color: data.shipment.sla_tier === "GOLD"
+                        ? "var(--color-warning)"
+                        : "var(--color-text-muted)",
+                    }}
+                  >
                     {data.shipment.sla_tier}
                   </p>
                 </div>
                 {data.shipment.cost_to_serve && (
                   <div>
-                    <p style={{ fontFamily: "var(--font-mono)", fontSize: "9px", color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", margin: "0 0 2px 0" }}>
+                    <p
+                      className="text-[9px] uppercase tracking-widest mb-0.5"
+                      style={{ fontFamily: "var(--font-mono)", color: "var(--color-text-muted)" }}
+                    >
                       Cost to Serve
                     </p>
-                    <p style={{ fontFamily: "var(--font-mono)", fontSize: "12px", color: "var(--color-text-primary)", margin: 0 }}>
+                    <p
+                      className="text-[12px]"
+                      style={{ fontFamily: "var(--font-mono)", color: "var(--color-text-primary)" }}
+                    >
                       {formatCurrency(data.shipment.cost_to_serve)}
                     </p>
                   </div>
                 )}
                 {data.shipment.carbon_kg && (
                   <div>
-                    <p style={{ fontFamily: "var(--font-mono)", fontSize: "9px", color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", margin: "0 0 2px 0" }}>
+                    <p
+                      className="text-[9px] uppercase tracking-widest mb-0.5"
+                      style={{ fontFamily: "var(--font-mono)", color: "var(--color-text-muted)" }}
+                    >
                       Carbon
                     </p>
-                    <p style={{ fontFamily: "var(--font-mono)", fontSize: "12px", color: "var(--color-live)", margin: 0 }}>
+                    <p
+                      className="text-[12px]"
+                      style={{ fontFamily: "var(--font-mono)", color: "var(--color-live)" }}
+                    >
                       {formatCarbon(data.shipment.carbon_kg)}
                     </p>
                   </div>
@@ -257,80 +327,90 @@ export function DrillDownDrawer() {
 
             {/* ── Section B: Live Driver Panel ── */}
             {data.driver && (
-              <section style={{ padding: "20px", borderBottom: "1px solid var(--color-border)" }}>
+              <section
+                className="p-5 border-b"
+                style={{ borderColor: "var(--color-border)" }}
+              >
                 <p
-                  style={{
-                    fontFamily:    "var(--font-mono)",
-                    fontSize:      "9px",
-                    color:         "var(--color-text-muted)",
-                    textTransform: "uppercase",
-                    letterSpacing: "0.1em",
-                    margin:        "0 0 12px 0",
-                  }}
+                  className="text-[9px] uppercase tracking-widest mb-3"
+                  style={{ fontFamily: "var(--font-mono)", color: "var(--color-text-muted)" }}
                 >
                   Live Driver
                 </p>
 
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px" }}>
+                <div className="flex items-center justify-between mb-2.5">
                   <div>
-                    <p style={{ fontFamily: "var(--font-sans)", fontSize: "14px", fontWeight: 600, color: "var(--color-text-primary)", margin: "0 0 2px 0" }}>
+                    <p
+                      className="text-sm font-semibold mb-0.5"
+                      style={{ fontFamily: "var(--font-sans)", color: "var(--color-text-primary)" }}
+                    >
                       {data.driver.name}
                     </p>
                     {data.driver.phone && (
-                      <p style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--color-indigo)", margin: 0 }}>
+                      <p
+                        className="text-[11px]"
+                        style={{ fontFamily: "var(--font-mono)", color: "var(--color-indigo)" }}
+                      >
                         {data.driver.phone}
                       </p>
                     )}
                   </div>
                   <span
+                    className="text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded"
                     style={{
-                      fontFamily:    "var(--font-mono)",
-                      fontSize:      "9px",
-                      fontWeight:    700,
-                      textTransform: "uppercase",
-                      letterSpacing: "0.08em",
-                      padding:       "3px 8px",
-                      borderRadius:  "4px",
-                      color:         data.driver.current_status === "ONLINE" ? "var(--color-live)" : "var(--color-offline)",
-                      background:    data.driver.current_status === "ONLINE" ? "rgba(16,185,129,0.1)" : "rgba(107,114,128,0.1)",
+                      fontFamily:  "var(--font-mono)",
+                      color:       data.driver.current_status === "ONLINE" ? "var(--color-live)" : "var(--color-offline)",
+                      background:  data.driver.current_status === "ONLINE" ? "rgba(16,185,129,0.1)" : "rgba(107,114,128,0.1)",
                     }}
                   >
                     {data.driver.current_status}
                   </span>
                 </div>
 
-                {/* Vehicle */}
-                <div style={{ display: "flex", gap: "16px", marginBottom: "10px" }}>
-                  {data.driver.vehicle_id && (
+                {data.driver.vehicle_id && (
+                  <div className="flex gap-4 mb-2.5">
                     <div>
-                      <p style={{ fontFamily: "var(--font-mono)", fontSize: "9px", color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", margin: "0 0 2px 0" }}>
+                      <p
+                        className="text-[9px] uppercase tracking-widest mb-0.5"
+                        style={{ fontFamily: "var(--font-mono)", color: "var(--color-text-muted)" }}
+                      >
                         Vehicle
                       </p>
-                      <p style={{ fontFamily: "var(--font-mono)", fontSize: "12px", color: "var(--color-text-primary)", margin: 0 }}>
+                      <p
+                        className="text-[12px]"
+                        style={{ fontFamily: "var(--font-mono)", color: "var(--color-text-primary)" }}
+                      >
                         {data.driver.vehicle_id} — {data.driver.vehicle_type}
                       </p>
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
 
-                {/* Last known location — human label, never raw coords */}
                 {data.driver.last_known_location && (
                   <div
+                    className="rounded-md px-3 py-2"
                     style={{
-                      background:   "var(--color-raised)",
-                      border:       "1px solid var(--color-border)",
-                      borderRadius: "6px",
-                      padding:      "8px 12px",
+                      background: "var(--color-raised)",
+                      border:     "1px solid var(--color-border)",
                     }}
                   >
-                    <p style={{ fontFamily: "var(--font-mono)", fontSize: "9px", color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", margin: "0 0 2px 0" }}>
+                    <p
+                      className="text-[9px] uppercase tracking-widest mb-0.5"
+                      style={{ fontFamily: "var(--font-mono)", color: "var(--color-text-muted)" }}
+                    >
                       Last Known Location
                     </p>
-                    <p style={{ fontFamily: "var(--font-sans)", fontSize: "12px", color: "var(--color-text-primary)", margin: "0 0 2px 0" }}>
+                    <p
+                      className="text-[12px] mb-0.5"
+                      style={{ fontFamily: "var(--font-sans)", color: "var(--color-text-primary)" }}
+                    >
                       {data.driver.last_known_location}
                     </p>
                     {data.driver.last_seen_at && (
-                      <p style={{ fontFamily: "var(--font-mono)", fontSize: "10px", color: "var(--color-text-muted)", margin: 0 }}>
+                      <p
+                        className="text-[10px]"
+                        style={{ fontFamily: "var(--font-mono)", color: "var(--color-text-muted)" }}
+                      >
                         {formatRelativeTime(data.driver.last_seen_at)}
                       </p>
                     )}
@@ -341,72 +421,70 @@ export function DrillDownDrawer() {
 
             {/* ── Section C: Shipment Timeline ── */}
             {data.statusEvents.length > 0 && (
-              <section style={{ padding: "20px", borderBottom: "1px solid var(--color-border)" }}>
+              <section
+                className="p-5 border-b"
+                style={{ borderColor: "var(--color-border)" }}
+              >
                 <p
-                  style={{
-                    fontFamily:    "var(--font-mono)",
-                    fontSize:      "9px",
-                    color:         "var(--color-text-muted)",
-                    textTransform: "uppercase",
-                    letterSpacing: "0.1em",
-                    margin:        "0 0 16px 0",
-                  }}
+                  className="text-[9px] uppercase tracking-widest mb-4"
+                  style={{ fontFamily: "var(--font-mono)", color: "var(--color-text-muted)" }}
                 >
                   Shipment Timeline
                 </p>
 
-                <div style={{ display: "flex", flexDirection: "column", gap: "0" }}>
+                <div className="flex flex-col">
                   {data.statusEvents.map((event: StatusEvent, index: number) => (
-                    <div
-                      key={event.id}
-                      style={{
-                        display:  "flex",
-                        gap:      "12px",
-                        position: "relative",
-                      }}
-                    >
-                      {/* Timeline line */}
-                      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0 }}>
+                    <div key={event.id} className="flex gap-3 relative">
+                      <div className="flex flex-col items-center shrink-0">
                         <div
+                          className="w-2 h-2 rounded-full mt-1 shrink-0"
                           style={{
-                            width:        "8px",
-                            height:       "8px",
-                            borderRadius: "50%",
-                            background:   index === 0 ? STATUS_COLORS[event.status] ?? "var(--color-indigo)" : "var(--color-border)",
-                            marginTop:    "4px",
-                            flexShrink:   0,
+                            background: index === 0
+                              ? (STATUS_COLORS[event.status] ?? "var(--color-indigo)")
+                              : "var(--color-border)",
                           }}
                         />
                         {index < data.statusEvents.length - 1 && (
-                          <div style={{ width: "1px", flex: 1, background: "var(--color-border)", minHeight: "20px" }} />
+                          <div
+                            className="w-px flex-1 min-h-[20px]"
+                            style={{ background: "var(--color-border)" }}
+                          />
                         )}
                       </div>
 
-                      {/* Event content */}
-                      <div style={{ paddingBottom: "16px", flex: 1 }}>
-                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                      <div className="pb-4 flex-1">
+                        <div className="flex items-center justify-between">
                           <span
+                            className="text-[11px] uppercase tracking-widest"
                             style={{
-                              fontFamily:    "var(--font-mono)",
-                              fontSize:      "11px",
-                              fontWeight:    index === 0 ? 700 : 400,
-                              color:         index === 0 ? STATUS_COLORS[event.status] ?? "var(--color-text-primary)" : "var(--color-text-primary)",
-                              textTransform: "uppercase",
-                              letterSpacing: "0.06em",
+                              fontFamily:  "var(--font-mono)",
+                              fontWeight:  index === 0 ? 700 : 400,
+                              color:       index === 0
+                                ? (STATUS_COLORS[event.status] ?? "var(--color-text-primary)")
+                                : "var(--color-text-primary)",
                             }}
                           >
                             {event.status.replace("_", " ")}
                           </span>
-                          <span style={{ fontFamily: "var(--font-mono)", fontSize: "10px", color: "var(--color-text-muted)" }}>
+                          <span
+                            className="text-[10px]"
+                            style={{ fontFamily: "var(--font-mono)", color: "var(--color-text-muted)" }}
+                          >
                             {formatRelativeTime(event.timestamp)}
                           </span>
                         </div>
                         {event.location && (
-                          <p style={{ fontFamily: "var(--font-sans)", fontSize: "11px", color: "var(--color-text-muted)", margin: "2px 0 0 0" }}>
+                          <p
+                            className="text-[11px] mt-0.5"
+                            style={{ fontFamily: "var(--font-sans)", color: "var(--color-text-muted)" }}
+                          >
                             {event.location}
                           </p>
                         )}
-                        <p style={{ fontFamily: "var(--font-mono)", fontSize: "10px", color: "var(--color-text-muted)", margin: "2px 0 0 0" }}>
+                        <p
+                          className="text-[10px] mt-0.5"
+                          style={{ fontFamily: "var(--font-mono)", color: "var(--color-text-muted)" }}
+                        >
                           {RECORDED_BY_LABEL[event.recorded_by_type]}
                         </p>
                       </div>
@@ -417,25 +495,25 @@ export function DrillDownDrawer() {
             )}
 
             {/* ── Section D: Scoped Audit Trace ── */}
-            <section style={{ padding: "20px" }}>
+            <section className="p-5">
               <p
-                style={{
-                  fontFamily:    "var(--font-mono)",
-                  fontSize:      "9px",
-                  color:         "var(--color-text-muted)",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.1em",
-                  margin:        "0 0 4px 0",
-                }}
+                className="text-[9px] uppercase tracking-widest mb-1"
+                style={{ fontFamily: "var(--font-mono)", color: "var(--color-text-muted)" }}
               >
                 Audit Trace
               </p>
-              <p style={{ fontFamily: "var(--font-mono)", fontSize: "10px", color: "var(--color-text-muted)", margin: "0 0 16px 0" }}>
+              <p
+                className="text-[10px] mb-4"
+                style={{ fontFamily: "var(--font-mono)", color: "var(--color-text-muted)" }}
+              >
                 {data.auditEntries.length} entries for this record
               </p>
 
               {data.auditEntries.length === 0 && (
-                <p style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--color-text-muted)" }}>
+                <p
+                  className="text-[11px]"
+                  style={{ fontFamily: "var(--font-mono)", color: "var(--color-text-muted)" }}
+                >
                   No changes recorded yet.
                 </p>
               )}
