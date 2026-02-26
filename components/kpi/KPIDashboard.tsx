@@ -10,6 +10,7 @@
 import { useKPIMetrics }  from "@/lib/hooks/useKPIMetrics";
 import { useAnomalies }   from "@/lib/hooks/useAnomalies";
 import { useAppStore }    from "@/lib/stores/app.store";
+import { usePredictiveAnomalyDetection } from "@/lib/hooks/usePredictiveAnomalyDetection";
 
 // ── Skeleton card ─────────────────────────────────────────────────────────────
 
@@ -145,6 +146,7 @@ function KPICard({ label, value, unit, highlight, sublabel }: KPICardProps) {
 
 export function KPIDashboard() {
   const activeRole = useAppStore((s) => s.activeRole);
+  usePredictiveAnomalyDetection(activeRole);
 
   const { data: kpi,       isLoading: kpiLoading,  isError: kpiError  } = useKPIMetrics();
   const { data: anomalies, isLoading: anomLoading                       } = useAnomalies(activeRole);
