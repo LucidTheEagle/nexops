@@ -198,12 +198,24 @@ export interface UserSession {
 }
 
 // ── Drill-Down Drawer ─────────────────────────────────────────────────────────
-
 export interface DrillDownData {
   shipment:     Shipment;
   driver:       Driver | null;
   client:       Client;
   statusEvents: StatusEvent[];
+  auditEntries: AuditLogEntry[];
+  anomaly:      Anomaly | null;
+}
+
+export interface DriverDrillDownData {
+  driver:       Driver;
+  auditEntries: AuditLogEntry[];
+  anomaly:      Anomaly | null;
+}
+
+export interface InvoiceDrillDownData {
+  invoice:      Invoice;
+  client:       Client;
   auditEntries: AuditLogEntry[];
   anomaly:      Anomaly | null;
 }
