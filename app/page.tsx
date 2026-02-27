@@ -4,6 +4,7 @@
 import { useState, useEffect } from "react";
 import { ActionQueue }     from "@/components/action-queue/ActionQueue";
 import { SyncDot }         from "@/components/ui/SyncDot";
+import { Toast } from "@/components/ui/Toast";
 import { AuditLedger }     from "@/components/audit/AuditLedger";
 import { DrillDownDrawer } from "@/components/drill-down/DrillDownDrawer";
 import { CommandPalette }  from "@/components/ui/CommandPalette";
@@ -194,6 +195,7 @@ export default function Home() {
 
       <DrillDownDrawer />
       <CommandPalette />
+      <Toast />
     </div>
   );
 }

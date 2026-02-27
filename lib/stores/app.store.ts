@@ -4,8 +4,8 @@
 // No server data here — that belongs to React Query.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { create } from "zustand";
-import { devtools } from "zustand/middleware";
+import { create }    from "zustand";
+import { devtools }  from "zustand/middleware";
 import type { UserRole, Anomaly } from "@/types";
 
 interface AppState {
@@ -22,6 +22,10 @@ interface AppState {
   // ── Command Palette ────────────────────────────────────────────────────────
   commandPaletteOpen:    boolean;
   setCommandPaletteOpen: (open: boolean) => void;
+
+  // ── Toast ──────────────────────────────────────────────────────────────────
+  toast:    { message: string; type: "error" | "success" } | null;
+  setToast: (toast: { message: string; type: "error" | "success" } | null) => void;
 }
 
 export const useAppStore = create<AppState>()(
@@ -52,6 +56,11 @@ export const useAppStore = create<AppState>()(
       commandPaletteOpen:    false,
       setCommandPaletteOpen: (open) =>
         set({ commandPaletteOpen: open }, false, "app/setCommandPaletteOpen"),
+
+      // ── Toast ────────────────────────────────────────────────────────────
+      toast:    null,
+      setToast: (toast) =>
+        set({ toast }, false, "app/setToast"),
     }),
     { name: "NexOps/App" }
   )
